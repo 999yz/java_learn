@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 可以从官方文档中直接拿下来-->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+<mapper namespace="goods">
+<!--    开启二级缓存，使用最近最久未使用算法-->
+    <cache eviction="LRU" flushInterval="600000" size="512" readOnly="true"/>
+
+    <select id="selectAll" resultType="com.mybatis.entity.Goods" useCache="false">
+        select * from t_goods order by goods_id desc limit 10
+    </select>
+
+
+    <!-- 单参数传递,使用parameterType指定参数的数据类型即可,SQL中#{value}提取参数-->
+    <select id="selectById" parameterType="Integer" resultType="com.mybatis.entity.Goods">
+        select * from t_goods where  goods_id = #{value}
+    </select>
+
+
+    <!-- 多参数传递时,使用parameterType指定Map接口,SQL中#{key}提取参数 -->
+    <select id="selectByPriceRange" parameterType="java.util.Map" resultType="com.mybatis.entity.Goods">
+        select * from t_goods
+        where
+          current_price between  #{min} and #{max}
+        order by current_price
+        limit 0,#{limit}
+    </select>
+
+    <select id="selectGoodsMap" resultType="java.util.LinkedHashMap" flushCache="true">
+        select g.* , c.category_name from t_goods g , t_category c
+        where g.category_id = c.category_id
+    </select>
+
+
+<!--完成结果映射-->
+    <resultMap id="rmGoods" type="com.mybatis.dto.GoodsDTO">
+<!--     设置主键与属性映射
+id代表主键的意思 column字段名（查询结果中某个字段的名字）
+ property属性名（就是dto中某一个具体属性的名称)在每一次数据查询出来之后，MyBatis都会自动的为GoodsDTO
+ 中goods对象的goodsId这个属性进行赋值-->
+        <id property="goods.goodsId" column="goods_id"></id>
+<!--设置非主键字段与属性映射
+指的是除了id以外，其他的字段有哪些-->
+        <result property="goods.title" column="title"></result>
+        <result property="goods.originalCost" column="original_cost"></result>
+        <result property="goods.currentPrice" column="current_price"></result>
+        <result property="goods.discount" column="discount"></result>
+        <result property="goods.isFreeDelivery" column="is_free_delivery"></result>
+        <result property="goods.categoryId" column="category_id"></result>
+        <result property="category.categoryName" column="category_name"></result>
+        <result property="category.categoryId" column="category_id"></result>
+        <result property="category.categoryLevel" column="category_level"></result>
+        <result property="category.categoryOrder" column="category_order"></result>
+        <result property="category.parentId" column="parent_id"></result>
+
+    </resultMap>
+    <select id="selectGoodsDTO" resultMap="rmGoods">
+        select g.* , c.* from t_goods g , t_category c
+        where g.category_id = c.category_id
+    </select>
+
+
+<!--完成数据插入操作-->
+    <insert id="insert" parameterType="com.mybatis.entity.Goods" flushCache="true">
+        INSERT INTO t_goods(title,sub_title,original_cost,current_price,discount,is_free_delivery,category_id)
+        VALUES(#{title},#{subTitle},#{originalCost},#{currentPrice},#{discount},#{isFreeDelivery},#{categoryId})
+<!--AFTER代表执行完上述insert语句后，开始执行下面的语句
+last_insert_id()为mysql自带的，用于获取当前链接最后产生的id号-->
+        <selectKey resultType="Integer" keyProperty="goodsId" order="AFTER">
+            select last_insert_id()
+        </selectKey>
+    </insert>
+    
+
+<!--完成数据的更新操作-->
+    <update id="update" parameterType="com.mybatis.entity.Goods">
+        UPDATE babytun.t_goods
+        SET title=#{title},
+        sub_title=#{subTitle},
+        original_cost=#{originalCost},
+        current_price=#{currentPrice},
+        discount=#{discount},
+        is_free_delivery=#{isFreeDelivery},
+        category_id=#{categoryId}
+        WHERE
+            goods_id = #{goodsId}
+    </update>
+
+
+<!--    完成删除操作-->
+    <delete id="delete" parameterType="com.mybatis.entity.Goods">
+        DELETE from t_goods where goods_id=#{value}
+    </delete>
+
+
+<!--    动态SQL查询-->
+    <select id="dynamicSQL" parameterType="java.util.Map" resultType="com.mybatis.entity.Goods">
+        select * from t_goods
+        <where>
+            <if test="categoryId != null">
+                and category_id = #{categoryId}
+            </if>
+            <if test="currentPrice != null">
+                and current_price &lt; #{currentPrice}
+            </if>
+        </where>
+    </select>
+
+<!--    通过goods可以关联查询到多个goodsdetail对象-->
+    <!--
+           resultMap可用于说明一对多或者多对一的映射逻辑
+           id 是resultMap属性引用的标志
+           type 指向One的实体(Goods)-->
+    <resultMap id="rmGoods1" type="com.mybatis.entity.Goods">
+        <!-- 映射goods对象的主键到goods_id字段 -->
+        <id column="goods_id" property="goodsId"></id>
+        <!--
+            collection的含义是,在
+            select * from t_goods limit 0,1 得到结果后,对所有Goods对象遍历得到goods_id字段值,
+            并代入到goodsDetail命名空间的findByGoodsId的SQL中执行查询,
+            将得到的"商品详情"集合赋值给goodsDetails List对象.
+        -->
+        <collection property="goodsDetails" select="goodsDetail.selectByGoodsId"
+                    column="goods_id"/>
+    </resultMap>
+    <select id="selectOneToMany" resultMap="rmGoods1">
+        select * from t_goods limit 0,10
+    </select>
+
+<!-- 分页处理实例 -->
+    <select id="selectPage" resultType="com.mybatis.entity.Goods">
+        select * from t_goods where current_price &lt; 1000
+    </select>
+
+
+</mapper>

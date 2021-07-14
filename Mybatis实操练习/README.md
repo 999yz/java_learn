@@ -1,0 +1,5 @@
+从未接触过java的相关知识起，完成了MyBatis的开发流程，
+初始化MyBatisUtil工具类，实现MyBatis的增删改查工作，
+使用了原始开发模式及Mapper开发模式，实现动态SQL，MyBatis的日志管理及二级缓存机制，
+实现一对多和多对一的映射查询，利用PageHelper插件实现分页
+对于Mybatis的一个小实操练习
